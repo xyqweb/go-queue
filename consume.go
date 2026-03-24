@@ -10,3 +10,7 @@ type Consume interface {
 	// Close 关闭消费端
 	Close()
 }
+
+func NewConsume() {
+
+}
