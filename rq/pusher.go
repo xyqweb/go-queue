@@ -35,25 +35,28 @@ func (p *pusher) Close() {
 
 // Send queue message
 func (p *pusher) Send(data *qtypes.QueueDelayData) error {
-	body, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
 	data.Attempt++
 	if data.Attempt > 1 {
 		data.Delay = 60000
 	}
+	body, err := json.Marshal(&qtypes.MessageBody{
+		Body:    data.Body,
+		Type:    data.Type,
+		Attempt: data.Attempt,
+	})
+	if err != nil {
+		return err
+	}
 	return p.client.Push(data.Name, &qtypes.MessageData{
 		ID:        p.generateMessageId(data.Name),
-		Body:      body,
-		Type:      data.Type,
+		Body:      string(body),
 		CreatedAt: time.Now().UnixMilli(),
 		Delay:     data.Delay,
-		Attempt:   1,
+		Attempt:   data.Attempt,
 	})
 }
 
 // generate message id
 func (p *pusher) generateMessageId(name string) string {
-	return fmt.Sprintf("%s%d", name, time.Now().UnixMicro())
+	return fmt.Sprintf("%s.%d", name, time.Now().UnixMicro())
 }

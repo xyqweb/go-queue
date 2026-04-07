@@ -72,7 +72,6 @@ func (r *rabbitmq) GetMaxRetry() uint16 {
 
 // Verify verify rabbitmq config is correct
 func (r *rabbitmq) Verify() error {
-
 	return VerifyClient()
 }
 
@@ -89,7 +88,8 @@ func (r *rabbitmq) getRabbitURL() string {
 
 func NewRabbitmq(rabbitmqConf RabbitmqConf) error {
 	rabbitmqOnce.Do(func() {
-		instance = &rabbitmq{Conf: rabbitmqConf}
+		instance = &rabbitmq{Conf: rabbitmqConf, queueMap: make(map[string]bool, len(rabbitmqConf.Queue))}
+		instance.Initialize()
 	})
 	if !rabbitmqConf.NonBlock {
 		if err := instance.Verify(); err != nil {

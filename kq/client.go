@@ -38,7 +38,11 @@ type KafkaConf struct {
 
 var kClient *kgo.Client
 
-func NewClient(conf KafkaConf, topic []string) (err error) {
+func NewClient(conf KafkaConf) (err error) {
+	topic := make([]string, 0, len(conf.Queue))
+	for _, queue := range conf.Queue {
+		topic = append(topic, queue.Name)
+	}
 	opts := []kgo.Opt{
 		kgo.SeedBrokers(conf.Brokers...),
 		kgo.MinVersions(kversion.V4_0_0()),
@@ -50,6 +54,9 @@ func NewClient(conf KafkaConf, topic []string) (err error) {
 		kgo.ConsumerGroup(conf.GroupID),
 		kgo.ConsumeTopics(topic...),
 		kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()), // 首次消费从头
+		kgo.RebalanceTimeout(5 * time.Second),             // 重平衡 5s
+		kgo.HeartbeatInterval(10 * time.Second),
+		kgo.FetchMaxWait(500 * time.Millisecond), // 拉取等待 0.5s
 		kgo.OnPartitionsRevoked(func(ctx context.Context, cl *kgo.Client, revoked map[string][]int32) {
 			cl.CommitOffsetsSync(
 				ctx,

@@ -19,7 +19,7 @@ type Pusher interface {
 	// topic 主题
 	// data 消息内容
 	// maxRetry 最大可重试次数-默认3次
-	Send(ctx context.Context, data *qtypes.QueueData) error
+	Send(data *qtypes.QueueData) error
 	// Close 关闭
 	Close()
 }
@@ -32,14 +32,14 @@ type pusher struct {
 }
 
 // Send 发送消息
-func (p *pusher) Send(ctx context.Context, data *qtypes.QueueData) error {
-	body, err := json.Marshal(data)
+func (p *pusher) Send(data *qtypes.QueueData) error {
+	body, err := json.Marshal(data.Body)
 	if err != nil {
 		return err
 	}
 	value, err := json.Marshal(qtypes.MessageData{
 		ID:        p.generateMessageId(data.Name),
-		Body:      body,
+		Body:      string(body),
 		Type:      data.Type,
 		CreatedAt: time.Now().UnixMilli(),
 		Attempt:   data.Attempt + 1,
@@ -48,7 +48,7 @@ func (p *pusher) Send(ctx context.Context, data *qtypes.QueueData) error {
 		fmt.Println(err)
 		return err
 	}
-	cancelCtx, cancel := context.WithTimeout(ctx, queuePushTimeout)
+	cancelCtx, cancel := context.WithTimeout(context.Background(), queuePushTimeout)
 	defer cancel()
 	return kClient.ProduceSync(cancelCtx, &kgo.Record{
 		Value: value,
@@ -58,7 +58,7 @@ func (p *pusher) Send(ctx context.Context, data *qtypes.QueueData) error {
 
 // generate message id
 func (p *pusher) generateMessageId(name string) string {
-	return fmt.Sprintf("%s%d", name, time.Now().UnixMicro())
+	return fmt.Sprintf("%s.%d", name, time.Now().UnixMicro())
 }
 
 // Close 关闭

@@ -140,7 +140,6 @@ func (c *client) CloseChannel(ch *amqp.Channel) error {
 
 // Push publish message to rabbitmq
 func (c *client) Push(queueName string, data *qtypes.MessageData) error {
-	// push no handleNotify
 	if !c.isReady.Load() || c.conn.IsClosed() {
 		if err := c.openConnection(); err != nil {
 			return err
@@ -169,7 +168,7 @@ func (c *client) Push(queueName string, data *qtypes.MessageData) error {
 		DeliveryMode: amqp.Persistent,
 		MessageId:    data.ID,
 		Timestamp:    time.Now(),
-		Body:         data.Body,
+		Body:         []byte(data.Body),
 	}); err != nil {
 		fmt.Println(err)
 		return err
@@ -183,10 +182,10 @@ func (c *client) Push(queueName string, data *qtypes.MessageData) error {
 }
 
 // get queue declare args
-func (c *client) getArgs(queueName, deadLetterRoutingKey string, delay uint32) amqp.Table {
-	args := amqp.Table{
-		amqp.QueueTypeArg:       amqp.QueueTypeQuorum,
-		amqp.ConsumerTimeoutArg: instance.GetConsumerTimeout(),
+func (c *client) getArgs(queueName, deadLetterRoutingKey string, delay int32) amqp.Table {
+	args := amqp.Table{amqp.QueueTypeArg: amqp.QueueTypeQuorum}
+	if consumerTimeout := instance.GetConsumerTimeout(); consumerTimeout > 0 {
+		args[amqp.ConsumerTimeoutArg] = consumerTimeout
 	}
 	if delay > 0 {
 		args[DeadLetterExchange] = instance.GetExchange()
@@ -199,7 +198,7 @@ func (c *client) getArgs(queueName, deadLetterRoutingKey string, delay uint32) a
 	return args
 }
 
-func (c *client) getQueue(queueName string, delay uint32, attempt uint16) (string, string, uint32) {
+func (c *client) getQueue(queueName string, delay int32, attempt uint16) (string, string, int32) {
 	if attempt > instance.GetMaxRetry() {
 		delay = 0
 		queueName += ".error"

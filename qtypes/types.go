@@ -15,7 +15,7 @@ type QueueData struct {
 	// queue type
 	Type string
 	// queue body
-	Data any
+	Body any
 	// execution count
 	Attempt uint16
 }
@@ -27,23 +27,29 @@ type QueueDelayData struct {
 	// queue body
 	Body any
 	// delay time(unit millisecond)
-	Delay uint32
+	Delay int32
 	// execution count
 	Attempt uint16
 }
 type MessageData struct {
 	// message id
-	ID string
-	// queue body
-	Body []byte
+	ID string `json:"id"`
 	// queue type
-	Type string
+	Type string `json:"type"`
+	// queue body
+	Body string `json:"body"`
 	// queue create time
-	CreatedAt int64
+	CreatedAt int64 `json:"createdAt"`
 	// delay time(unit millisecond)
-	Delay uint32
+	Delay int32 `json:"delay"`
 	// execution count
-	Attempt uint16
-	// error message
-	//Error string `json:",omitempty"`
+	Attempt uint16 `json:"attempt"`
+}
+type MessageBody struct {
+	// queue body
+	Body any `json:"body"`
+	// queue type
+	Type string `json:"type"`
+	// execution count
+	Attempt uint16 `json:"attempt"`
 }

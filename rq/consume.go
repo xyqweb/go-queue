@@ -20,7 +20,7 @@ type Consume interface {
 }
 
 // NewConsume new consume
-func NewConsume(queueName string, handler func(queueName string, data *qtypes.MessageData)) Consume {
+func NewConsume(queueName string, handler func(queueName string, data *qtypes.MessageData) error) Consume {
 	if instance == nil {
 		log.Fatal("RabbitMQ has not been initialized yet")
 	}
@@ -42,12 +42,16 @@ type consume struct {
 	channel         *amqp.Channel
 	m               *sync.Mutex
 	isReady         chan bool
-	handler         func(queueName string, data *qtypes.MessageData)
+	handler         func(queueName string, data *qtypes.MessageData) error
 	queueName       string
 }
 
 // Start consume
 func (c *consume) Start() {
+	if err := c.getChannel(); err != nil {
+		fmt.Println(err)
+		return
+	}
 	go c.client.HandleNotify()
 	for {
 		select {
@@ -77,23 +81,43 @@ func (c *consume) execJob() {
 	for delivery := range deliveries {
 		c.handleJob(delivery)
 	}
-	c.notifyChanClose <- amqp.ErrClosed
 }
 
 // handle job
 func (c *consume) handleJob(delivery amqp.Delivery) {
 	defer func() {
+		if ackErr := delivery.Ack(true); ackErr != nil {
+			fmt.Println("ack error: ", ackErr)
+		}
 		err := recover()
 		if err != nil {
 			fmt.Println(err)
 		}
 	}()
-	var queue qtypes.MessageData
-	if err := json.Unmarshal(delivery.Body, &queue); err != nil {
-		fmt.Println(err)
+	var queueData qtypes.MessageBody
+	if err := json.Unmarshal(delivery.Body, &queueData); err != nil {
+		fmt.Println("json.Unmarshal err: ", err)
 		return
 	}
-	c.handler(c.queueName, &queue)
+	body, err := json.Marshal(queueData.Body)
+	if err != nil {
+		fmt.Println("json.Marshal err: ", err)
+		return
+	}
+	queue := &qtypes.MessageData{
+		ID:        delivery.MessageId,
+		Body:      string(body),
+		Type:      queueData.Type,
+		CreatedAt: delivery.Timestamp.UnixMilli(),
+		Attempt:   queueData.Attempt,
+	}
+	if err := c.handler(c.queueName, queue); err != nil {
+		if err = c.client.Push(c.queueName, queue); err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println(err)
+		}
+	}
 }
 
 // get channel
