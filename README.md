@@ -22,7 +22,11 @@ go get github.com/xyqweb/go-queue
 ### RabbitMQ 使用示例
 
 #### 1. 初始化配置
+```shell
+导入 RabbitMQ 依赖包
 
+go get github.com/rabbitmq/amqp091-go
+```
 ```go
 package main
 
@@ -104,6 +108,12 @@ func consumeOrder() {
 ### Kafka 使用示例
 
 #### 1. 初始化配置
+```shell
+导入kafka 依赖包
+go get github.com/twmb/franz-go
+go get github.com/twmb/franz-go/pkg/kmsg
+```
+
 ```go
 package main
 import ( 
