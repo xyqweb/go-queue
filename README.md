@@ -128,7 +128,6 @@ func main() {
 		GroupID: "order-group", 
 		MaxBytes: 10485760, // 10MB 
 		NonBlock: true, 
-		MaxRetries: 3, 
 		Queue: []qtypes.QueueConf{ 
 			{Name: "order-topic"}, 
 			{Name: "user-topic"}, 

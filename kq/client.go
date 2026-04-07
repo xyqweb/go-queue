@@ -20,7 +20,7 @@ import (
 type KafkaConf struct {
 	Enable bool `json:",optional"`
 	// max retry num
-	MaxRetries int `json:",optional"`
+	//MaxRetries int `json:",optional"`
 	// server address ip:port
 	Brokers []string `json:",optional"`
 	// sets the max amount of bytes that the client will buffer

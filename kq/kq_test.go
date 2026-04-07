@@ -11,15 +11,15 @@ import (
 
 func TestMain(m *testing.M) {
 	err := NewClient(KafkaConf{
-		Enable:     true,
-		MaxRetries: 3,
-		Brokers:    []string{"127.0.0.1:9092"},
-		MaxBytes:   1048576,
-		Username:   "",
-		Password:   "",
-		Method:     "plain",
-		GroupID:    "kq-tet",
-		NonBlock:   false,
+		Enable: true,
+		//MaxRetries: 3,
+		Brokers:  []string{"127.0.0.1:9092"},
+		MaxBytes: 1048576,
+		Username: "",
+		Password: "",
+		Method:   "plain",
+		GroupID:  "kq-tet",
+		NonBlock: false,
 		Queue: []qtypes.QueueConf{
 			{Name: "test-queue"},
 		},
