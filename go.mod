@@ -13,3 +13,4 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
 )
+retract v1.0.0
