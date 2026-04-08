@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/xyqweb/go-queue/kq/internal/client"
 	"github.com/xyqweb/go-queue/qtypes"
 )
 
@@ -18,7 +17,7 @@ type Consume interface {
 }
 
 func NewConsume(handler func(queueName string, data *qtypes.MessageData)) Consume {
-	if client.KClient == nil {
+	if kClient == nil {
 		log.Fatal("Kafka has not been initialized yet")
 	}
 	return &consume{handler: handler}
@@ -30,7 +29,7 @@ type consume struct {
 
 func (c *consume) Start() error {
 	for {
-		fetches := client.KClient.PollFetches(context.Background())
+		fetches := kClient.PollFetches(context.Background())
 		if err := fetches.Err0(); err != nil {
 			return err
 		}
@@ -47,5 +46,5 @@ func (c *consume) Start() error {
 }
 
 func (c *consume) Close() {
-	client.KClient.Close()
+	kClient.Close()
 }

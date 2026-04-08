@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/xyqweb/go-queue/kq/internal/client"
 	"github.com/xyqweb/go-queue/qtypes"
 )
 
@@ -27,7 +26,7 @@ type Pusher interface {
 }
 
 func NewPusher() Pusher {
-	if client.KClient == nil {
+	if kClient == nil {
 		log.Fatal("Kafka has not been initialized yet")
 	}
 	return &pusher{}
@@ -55,7 +54,7 @@ func (p *pusher) Send(data *qtypes.QueueData) error {
 	}
 	cancelCtx, cancel := context.WithTimeout(context.Background(), queuePushTimeout)
 	defer cancel()
-	return client.KClient.ProduceSync(cancelCtx, &kgo.Record{
+	return kClient.ProduceSync(cancelCtx, &kgo.Record{
 		Value: value,
 		Topic: data.Name,
 	}).FirstErr()
@@ -68,5 +67,5 @@ func (p *pusher) generateMessageId(name string) string {
 
 // Close 关闭
 func (p *pusher) Close() {
-	client.KClient.Close()
+	kClient.Close()
 }

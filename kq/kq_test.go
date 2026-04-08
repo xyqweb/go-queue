@@ -6,12 +6,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/xyqweb/go-queue/kq/internal/client"
 	"github.com/xyqweb/go-queue/qtypes"
 )
 
 func TestMain(m *testing.M) {
-	err := client.NewClient(qtypes.KafkaConf{
+	err := NewClient(KafkaConf{
 		Enable: true,
 		//MaxRetries: 3,
 		Brokers:  []string{"127.0.0.1:9092"},
@@ -31,7 +30,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	defer func() {
 		fmt.Println("kq test end")
-		client.KClient.Close()
+		kClient.Close()
 	}()
 	os.Exit(code)
 }

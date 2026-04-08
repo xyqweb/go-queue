@@ -1,15 +1,13 @@
-package client
+package rq
 
 import (
 	"fmt"
 	"net/url"
 	"sync"
-
-	"github.com/xyqweb/go-queue/qtypes"
 )
 
 var (
-	Instance     Rabbitmq
+	instance     Rabbitmq
 	rabbitmqOnce sync.Once
 )
 
@@ -24,7 +22,7 @@ type Rabbitmq interface {
 	Initialize()
 }
 type rabbitmq struct {
-	Conf     qtypes.RabbitmqConf
+	Conf     RabbitmqConf
 	amqpURI  string
 	queueMap map[string]bool
 }
@@ -70,16 +68,16 @@ func (r *rabbitmq) getRabbitURL() string {
 	return fmt.Sprintf("amqp://%s:%s@%s/%s", r.Conf.Username, url.PathEscape(r.Conf.Password), r.Conf.Broker, r.Conf.Vhost)
 }
 
-func NewRabbitmq(rabbitmqConf qtypes.RabbitmqConf) error {
+func NewRabbitmq(rabbitmqConf RabbitmqConf) error {
 	if !rabbitmqConf.Enable {
 		return nil
 	}
 	rabbitmqOnce.Do(func() {
-		Instance = &rabbitmq{Conf: rabbitmqConf, queueMap: make(map[string]bool, len(rabbitmqConf.Queue))}
-		Instance.Initialize()
+		instance = &rabbitmq{Conf: rabbitmqConf, queueMap: make(map[string]bool, len(rabbitmqConf.Queue))}
+		instance.Initialize()
 	})
 	if !rabbitmqConf.NonBlock {
-		if err := Instance.Verify(); err != nil {
+		if err := instance.Verify(); err != nil {
 			return err
 		}
 	}
