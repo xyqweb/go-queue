@@ -1,4 +1,4 @@
-package rq
+package internal
 
 import (
 	"errors"
@@ -81,7 +81,7 @@ func (c *client) Connect(must bool) error {
 func (c *client) openConnection() error {
 	c.m.Lock()
 	defer c.m.Unlock()
-	conn, err := amqp.Dial(instance.GetAmqpURI())
+	conn, err := amqp.Dial(Instance.GetAmqpURI())
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -163,7 +163,7 @@ func (c *client) Push(queueName string, data *qtypes.MessageData) error {
 		fmt.Println(err)
 		return err
 	}
-	if err = channel.Publish(instance.GetExchange(), routingKey, false, false, amqp.Publishing{
+	if err = channel.Publish(Instance.GetExchange(), routingKey, false, false, amqp.Publishing{
 		ContentType:  "text/plain",
 		DeliveryMode: amqp.Persistent,
 		MessageId:    data.ID,
@@ -184,22 +184,22 @@ func (c *client) Push(queueName string, data *qtypes.MessageData) error {
 // get queue declare args
 func (c *client) getArgs(queueName, deadLetterRoutingKey string, delay int32) amqp.Table {
 	args := amqp.Table{amqp.QueueTypeArg: amqp.QueueTypeQuorum}
-	if consumerTimeout := instance.GetConsumerTimeout(); consumerTimeout > 0 {
+	if consumerTimeout := Instance.GetConsumerTimeout(); consumerTimeout > 0 {
 		args[amqp.ConsumerTimeoutArg] = consumerTimeout
 	}
 	if delay > 0 {
-		args[DeadLetterExchange] = instance.GetExchange()
+		args[DeadLetterExchange] = Instance.GetExchange()
 		args[DeadLetterRoutingKey] = deadLetterRoutingKey
 		args[amqp.QueueMessageTTLArg] = delay
 	}
-	if instance.IsSingleActive(queueName) {
+	if Instance.IsSingleActive(queueName) {
 		args[amqp.SingleActiveConsumerArg] = true
 	}
 	return args
 }
 
 func (c *client) getQueue(queueName string, delay int32, attempt uint16) (string, string, int32) {
-	if attempt > instance.GetMaxRetry() {
+	if attempt > Instance.GetMaxRetry() {
 		delay = 0
 		queueName += ".error"
 	}
@@ -211,7 +211,7 @@ func (c *client) getQueue(queueName string, delay int32, attempt uint16) (string
 
 func (c *client) bindQueue(channel *amqp.Channel, queueName string, routingKey string, args amqp.Table) error {
 	if err := channel.ExchangeDeclare(
-		instance.GetExchange(), // name
+		Instance.GetExchange(), // name
 		amqp.ExchangeDirect,    // type
 		true,                   // durable
 		false,                  // auto-deleted
@@ -235,7 +235,7 @@ func (c *client) bindQueue(channel *amqp.Channel, queueName string, routingKey s
 	if err := channel.QueueBind(
 		queueName,
 		routingKey,
-		instance.GetExchange(),
+		Instance.GetExchange(),
 		false,
 		nil); err != nil {
 		fmt.Println(err)

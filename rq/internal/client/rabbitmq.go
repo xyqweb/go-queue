@@ -1,4 +1,4 @@
-package rq
+package internal
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	instance     Rabbitmq
+	Instance     Rabbitmq
 	rabbitmqOnce sync.Once
 )
 
@@ -87,12 +87,15 @@ func (r *rabbitmq) getRabbitURL() string {
 }
 
 func NewRabbitmq(rabbitmqConf RabbitmqConf) error {
+	if !rabbitmqConf.Enable {
+		return nil
+	}
 	rabbitmqOnce.Do(func() {
-		instance = &rabbitmq{Conf: rabbitmqConf, queueMap: make(map[string]bool, len(rabbitmqConf.Queue))}
-		instance.Initialize()
+		Instance = &rabbitmq{Conf: rabbitmqConf, queueMap: make(map[string]bool, len(rabbitmqConf.Queue))}
+		Instance.Initialize()
 	})
 	if !rabbitmqConf.NonBlock {
-		if err := instance.Verify(); err != nil {
+		if err := Instance.Verify(); err != nil {
 			return err
 		}
 	}

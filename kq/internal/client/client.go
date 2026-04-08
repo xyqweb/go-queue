@@ -1,4 +1,4 @@
-package kq
+package internal
 
 import (
 	"context"
@@ -36,9 +36,12 @@ type KafkaConf struct {
 	Queue []qtypes.QueueConf `json:",optional"`
 }
 
-var kClient *kgo.Client
+var KClient *kgo.Client
 
 func NewClient(conf KafkaConf) (err error) {
+	if !conf.Enable {
+		return
+	}
 	topic := make([]string, 0, len(conf.Queue))
 	for _, queue := range conf.Queue {
 		topic = append(topic, queue.Name)
@@ -113,6 +116,6 @@ func NewClient(conf KafkaConf) (err error) {
 			return errors.New("unsupported method: " + conf.Method)
 		}
 	}
-	kClient, err = kgo.NewClient(opts...)
+	KClient, err = kgo.NewClient(opts...)
 	return err
 }
