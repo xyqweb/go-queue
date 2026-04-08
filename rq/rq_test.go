@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/xyqweb/go-queue/qtypes"
+	"github.com/xyqweb/go-queue/rq/internal/client"
 )
 
 func TestMain(m *testing.M) {
-	err := NewRabbitmq(RabbitmqConf{
+	err := client.NewRabbitmq(client.RabbitmqConf{
 		Enable:     true,
 		MaxRetries: 3,
 		Broker:     "localhost:5672",

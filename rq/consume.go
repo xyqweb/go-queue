@@ -10,6 +10,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/xyqweb/go-queue/qtypes"
+	"github.com/xyqweb/go-queue/rq/internal/client"
 )
 
 type Consume interface {
@@ -21,11 +22,11 @@ type Consume interface {
 
 // NewConsume new consume
 func NewConsume(queueName string, handler func(queueName string, data *qtypes.MessageData) error) Consume {
-	if instance == nil {
+	if client.Instance == nil {
 		log.Fatal("RabbitMQ has not been initialized yet")
 	}
 	c := &consume{
-		client:    NewClient(true),
+		client:    client.NewClient(true),
 		done:      make(chan bool),
 		isReady:   make(chan bool, 1),
 		m:         &sync.Mutex{},
@@ -36,7 +37,7 @@ func NewConsume(queueName string, handler func(queueName string, data *qtypes.Me
 }
 
 type consume struct {
-	client          Client
+	client          client.Client
 	done            chan bool
 	notifyChanClose chan *amqp.Error
 	channel         *amqp.Channel

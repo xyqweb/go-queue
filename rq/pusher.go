@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/xyqweb/go-queue/qtypes"
+	"github.com/xyqweb/go-queue/rq/internal/client"
 )
 
 type Pusher interface {
@@ -18,14 +19,14 @@ type Pusher interface {
 }
 
 func NewPusher() Pusher {
-	if instance == nil {
+	if client.Instance == nil {
 		log.Fatal("RabbitMQ has not been initialized yet")
 	}
-	return &pusher{client: NewClient()}
+	return &pusher{client: client.NewClient()}
 }
 
 type pusher struct {
-	client Client
+	client client.Client
 }
 
 // Close pusher
