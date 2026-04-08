@@ -11,7 +11,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	err := client.NewClient(client.KafkaConf{
+	err := client.NewClient(qtypes.KafkaConf{
 		Enable: true,
 		//MaxRetries: 3,
 		Brokers:  []string{"127.0.0.1:9092"},

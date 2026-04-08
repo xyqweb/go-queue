@@ -23,24 +23,8 @@ type Rabbitmq interface {
 	Verify() error
 	Initialize()
 }
-type RabbitmqConf struct {
-	Enable bool `json:",optional"`
-	// max retry num
-	MaxRetries uint16 `json:",optional"`
-	// server address ip:port
-	Broker   string `json:",optional"`
-	Username string `json:",optional"`
-	Password string `json:",optional"`
-	Vhost    string `json:",optional"`
-	Exchange string `json:",optional"`
-	NonBlock bool   `json:",optional,default=true"`
-	// queue config
-	Queue []qtypes.QueueConf `json:",optional"`
-	// Delivery Acknowledgement Timeout(unit millisecond)
-	ConsumerTimeout int64 `json:",optional"`
-}
 type rabbitmq struct {
-	Conf     RabbitmqConf
+	Conf     qtypes.RabbitmqConf
 	amqpURI  string
 	queueMap map[string]bool
 }
@@ -86,7 +70,7 @@ func (r *rabbitmq) getRabbitURL() string {
 	return fmt.Sprintf("amqp://%s:%s@%s/%s", r.Conf.Username, url.PathEscape(r.Conf.Password), r.Conf.Broker, r.Conf.Vhost)
 }
 
-func NewRabbitmq(rabbitmqConf RabbitmqConf) error {
+func NewRabbitmq(rabbitmqConf qtypes.RabbitmqConf) error {
 	if !rabbitmqConf.Enable {
 		return nil
 	}

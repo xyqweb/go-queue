@@ -10,7 +10,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	err := client.NewRabbitmq(client.RabbitmqConf{
+	err := client.NewRabbitmq(qtypes.RabbitmqConf{
 		Enable:     true,
 		MaxRetries: 3,
 		Broker:     "localhost:5672",
