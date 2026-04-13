@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 
+	"github.com/xyqweb/go-queue/qlog"
 	"github.com/xyqweb/go-queue/qtypes"
 )
 
@@ -38,6 +39,7 @@ func (c *consume) Start() error {
 			record := iter.Next()
 			var data qtypes.MessageData
 			if err := json.Unmarshal(record.Value, &data); err != nil {
+				qlog.DefaultLogger.Errorf("kafka consume json.Unmarshal fail: %v", err)
 				return err
 			}
 			c.handler(record.Topic, &data)

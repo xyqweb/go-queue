@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/xyqweb/go-queue/qlog"
 	"github.com/xyqweb/go-queue/qtypes"
 )
 
@@ -39,6 +40,7 @@ type pusher struct {
 func (p *pusher) Send(data *qtypes.QueueData) error {
 	body, err := json.Marshal(data.Body)
 	if err != nil {
+		qlog.DefaultLogger.Errorf("kafka pusher json.Marshal fail: %v", err)
 		return err
 	}
 	value, err := json.Marshal(qtypes.MessageData{
@@ -49,7 +51,7 @@ func (p *pusher) Send(data *qtypes.QueueData) error {
 		Attempt:   data.Attempt + 1,
 	})
 	if err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("kafka pusher json.Marshal fail: %v", err)
 		return err
 	}
 	cancelCtx, cancel := context.WithTimeout(context.Background(), queuePushTimeout)

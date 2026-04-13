@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/xyqweb/go-queue/qlog"
 	"github.com/xyqweb/go-queue/qtypes"
 )
 
@@ -45,6 +46,7 @@ func (p *pusher) Send(data *qtypes.QueueDelayData) error {
 		Attempt: data.Attempt,
 	})
 	if err != nil {
+		qlog.DefaultLogger.Errorf("rabbitmq pusher json.Marshal fail: %v", err)
 		return err
 	}
 	return p.client.Push(data.Name, &qtypes.MessageData{

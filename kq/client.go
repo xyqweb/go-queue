@@ -14,6 +14,7 @@ import (
 	"github.com/twmb/franz-go/pkg/sasl/aws"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
 	"github.com/twmb/franz-go/pkg/sasl/scram"
+	"github.com/xyqweb/go-queue/qlog"
 	"github.com/xyqweb/go-queue/qtypes"
 )
 
@@ -52,7 +53,9 @@ func NewClient(conf KafkaConf) (err error) {
 		kgo.MaxBufferedBytes(conf.MaxBytes),
 		kgo.AllowAutoTopicCreation(),
 		kgo.ClientID(fmt.Sprintf("kq-:%d", os.Getpid())),
-		kgo.WithLogger(kgo.BasicLogger(os.Stderr, kgo.LogLevelError, nil)),
+		kgo.WithLogger(kgo.BasicLogger(os.Stdout, kgo.LogLevelWarn, func() string {
+			return "go-queue"
+		})),
 		// ===== 消费者配置（即使只做生产也建议配置）=====
 		kgo.ConsumerGroup(conf.GroupID),
 		kgo.ConsumeTopics(topic...),
@@ -67,16 +70,14 @@ func NewClient(conf KafkaConf) (err error) {
 				func(_ *kgo.Client, _ *kmsg.OffsetCommitRequest, resp *kmsg.OffsetCommitResponse, commitErr error) {
 					// 处理网络级错误
 					if commitErr != nil {
-						fmt.Println(commitErr)
-						//logx.WithContext(ctx).Errorf("commit error: %v", commitErr)
+						qlog.DefaultLogger.Errorf("kafka partitions commit fail: %v", commitErr)
 						return
 					}
 					// 处理分区级错误（关键！）
 					for _, t := range resp.Topics {
 						for _, part := range t.Partitions {
 							if part.ErrorCode != 0 {
-								fmt.Println(kerr.ErrorForCode(part.ErrorCode))
-								//logx.WithContext(ctx).Errorf("kerr: %v", kerr.ErrorForCode(part.ErrorCode))
+								qlog.DefaultLogger.Errorf("kafka partitions fail: %v", kerr.ErrorForCode(part.ErrorCode))
 							}
 						}
 					}

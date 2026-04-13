@@ -3,12 +3,12 @@ package rq
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"sync"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/xyqweb/go-queue/qlog"
 	"github.com/xyqweb/go-queue/qtypes"
 )
 
@@ -49,7 +49,7 @@ type consume struct {
 // Start consume
 func (c *consume) Start() {
 	if err := c.getChannel(); err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("rabbitmq consume open channel fail: %v", err)
 		return
 	}
 	go c.client.HandleNotify()
@@ -59,7 +59,7 @@ func (c *consume) Start() {
 			goto EndLoop
 		case <-c.notifyChanClose:
 			if err := c.getChannel(); err != nil {
-				fmt.Println(err)
+				qlog.DefaultLogger.Errorf("rabbitmq consume open channel fail: %v", err)
 				if errors.Is(err, amqp.ErrChannelMax) {
 					c.client.Close()
 				}
@@ -75,7 +75,7 @@ EndLoop:
 func (c *consume) execJob() {
 	deliveries, err := c.client.Consume(c.channel, c.queueName)
 	if err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("rabbitmq consume fail: %v", err)
 		return
 	}
 	for delivery := range deliveries {
@@ -87,21 +87,30 @@ func (c *consume) execJob() {
 func (c *consume) handleJob(delivery amqp.Delivery) {
 	defer func() {
 		if ackErr := delivery.Ack(true); ackErr != nil {
-			fmt.Println("ack error: ", ackErr)
+			qlog.DefaultLogger.Errorf("rabbitmq consume delivery ack fail: %v", ackErr)
 		}
-		err := recover()
-		if err != nil {
-			fmt.Println(err)
+		r := recover()
+		if r != nil {
+			var err error
+			switch x := r.(type) {
+			case string:
+				err = errors.New(x)
+			case error:
+				err = x
+			default:
+				err = errors.New("unknown error")
+			}
+			qlog.DefaultLogger.Errorf("rabbitmq consume handleJob panic: %v", err)
 		}
 	}()
 	var queueData qtypes.MessageBody
 	if err := json.Unmarshal(delivery.Body, &queueData); err != nil {
-		fmt.Println("json.Unmarshal err: ", err)
+		qlog.DefaultLogger.Errorf("rabbitmq consume json.Unmarshal fail: %v", err)
 		return
 	}
 	body, err := json.Marshal(queueData.Body)
 	if err != nil {
-		fmt.Println("json.Marshal err: ", err)
+		qlog.DefaultLogger.Errorf("rabbitmq consume json.Marshal fail: %v", err)
 		return
 	}
 	queue := &qtypes.MessageData{
@@ -111,11 +120,10 @@ func (c *consume) handleJob(delivery amqp.Delivery) {
 		CreatedAt: delivery.Timestamp.UnixMilli(),
 		Attempt:   queueData.Attempt,
 	}
-	if err := c.handler(c.queueName, queue); err != nil {
+	if err = c.handler(c.queueName, queue); err != nil {
+		qlog.DefaultLogger.Errorf("rabbitmq consume handler fail: %v", queue, err)
 		if err = c.client.Push(c.queueName, queue); err != nil {
-			fmt.Println(err)
-		} else {
-			fmt.Println(err)
+			qlog.DefaultLogger.Errorf("rabbitmq consume handler fail，re-push fail: %v", queue, err)
 		}
 	}
 }
@@ -125,7 +133,7 @@ func (c *consume) getChannel() error {
 	for {
 		ch, err := c.client.OpenChannel()
 		if err != nil {
-			fmt.Printf("c.client.OpenChannel error:%s\n", err)
+			qlog.DefaultLogger.Errorf("rabbitmq consume open channel fail: %v", err)
 			if errors.Is(err, amqp.ErrChannelMax) {
 				c.client.Close()
 			}

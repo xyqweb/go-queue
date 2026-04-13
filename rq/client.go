@@ -9,6 +9,7 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/xyqweb/go-queue/qlog"
 	"github.com/xyqweb/go-queue/qtypes"
 )
 
@@ -49,7 +50,7 @@ type Client interface {
 	CloseConnection()
 	HandleNotify()
 	OpenChannel() (*amqp.Channel, error)
-	CloseChannel(ch *amqp.Channel) error
+	CloseChannel(ch *amqp.Channel)
 	Push(queueName string, data *qtypes.MessageData) error
 	Consume(channel *amqp.Channel, queueName string) (<-chan amqp.Delivery, error)
 	Close()
@@ -84,7 +85,7 @@ func (c *client) Connect(must bool) error {
 	if must {
 		for {
 			if err := c.openConnection(); err != nil {
-				fmt.Println(err)
+				qlog.DefaultLogger.Errorf("open rabbitmq connection fail: %v", err)
 				time.Sleep(reconnectDelay)
 			} else {
 				break
@@ -100,7 +101,7 @@ func (c *client) openConnection() error {
 	defer c.m.Unlock()
 	conn, err := amqp.Dial(instance.GetAmqpURI())
 	if err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("open rabbitmq connection fail: %v", err)
 		return err
 	}
 	c.conn = conn
@@ -114,7 +115,7 @@ func (c *client) openConnection() error {
 func (c *client) CloseConnection() {
 	if c.conn != nil && !c.conn.IsClosed() {
 		if err := c.conn.Close(); err != nil {
-			fmt.Println(err)
+			qlog.DefaultLogger.Errorf("close rabbitmq connection fail: %v", err)
 		}
 	}
 	// wait HandleNotify reopen connection
@@ -141,18 +142,15 @@ func (c *client) OpenChannel() (*amqp.Channel, error) {
 	}
 	ch, err := c.conn.Channel()
 	if err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("open rabbitmq channel fail: %v", err)
 		return nil, err
 	}
 	return ch, nil
 }
 
 // CloseChannel close channel
-func (c *client) CloseChannel(ch *amqp.Channel) error {
-	if ch != nil && !ch.IsClosed() {
-		return ch.Close()
-	}
-	return nil
+func (c *client) CloseChannel(ch *amqp.Channel) {
+	c.closeChannel(ch)
 }
 
 // Push publish message to rabbitmq
@@ -164,12 +162,12 @@ func (c *client) Push(queueName string, data *qtypes.MessageData) error {
 	}
 	channel, err := c.OpenChannel()
 	if err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("open rabbitmq channel fail: %v", err)
 		return err
 	}
 	defer c.closeChannel(channel)
 	if err = channel.Confirm(false); err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("rabbitmq channel confirm fail: %v", err)
 		return err
 	}
 	publishConfirm := make(chan amqp.Confirmation, 1)
@@ -177,7 +175,7 @@ func (c *client) Push(queueName string, data *qtypes.MessageData) error {
 	name, routingKey, delay := c.getQueue(queueName, data.Delay, data.Attempt)
 	args := c.getArgs(name, c.getRoutingKey(queueName), delay)
 	if err = c.bindQueue(channel, name, routingKey, args); err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("rabbitmq channel bind queue fail: %v", err)
 		return err
 	}
 	if err = channel.Publish(instance.GetExchange(), routingKey, false, false, amqp.Publishing{
@@ -187,12 +185,12 @@ func (c *client) Push(queueName string, data *qtypes.MessageData) error {
 		Timestamp:    time.Now(),
 		Body:         []byte(data.Body),
 	}); err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("rabbitmq channel publish queue fail: %v", err)
 		return err
 	}
 	confirm := <-publishConfirm
 	if !confirm.Ack {
-		fmt.Println("publish confirm failed")
+		qlog.DefaultLogger.Errorf("rabbitmq channel publish confirm ack failed fail: %v", err)
 		return errPublishConfirm
 	}
 	return nil
@@ -236,7 +234,7 @@ func (c *client) bindQueue(channel *amqp.Channel, queueName string, routingKey s
 		false,                  // noWait
 		nil,                    // arguments
 	); err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("rabbitmq channel exchange declare fail: %v", err)
 		return err
 	}
 	if _, err := channel.QueueDeclare(
@@ -246,7 +244,7 @@ func (c *client) bindQueue(channel *amqp.Channel, queueName string, routingKey s
 		false,
 		false,
 		args); err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("rabbitmq channel queue declare fail: %v", err)
 		return err
 	}
 	if err := channel.QueueBind(
@@ -255,7 +253,7 @@ func (c *client) bindQueue(channel *amqp.Channel, queueName string, routingKey s
 		instance.GetExchange(),
 		false,
 		nil); err != nil {
-		fmt.Println(err)
+		qlog.DefaultLogger.Errorf("rabbitmq channel queue bind fail: %v", err)
 		return err
 	}
 	return nil
@@ -263,11 +261,16 @@ func (c *client) bindQueue(channel *amqp.Channel, queueName string, routingKey s
 
 // Consume start consume queue
 func (c *client) Consume(channel *amqp.Channel, queueName string) (<-chan amqp.Delivery, error) {
+	if err := c.bindQueue(channel, queueName, c.getRoutingKey(queueName), nil); err != nil {
+		qlog.DefaultLogger.Errorf("rabbitmq channel consume bind fail: %v", err)
+		return nil, err
+	}
 	if err := channel.Qos(
 		10,    // prefetchCount
 		0,     // prefetchSize
 		false, // global
 	); err != nil {
+		qlog.DefaultLogger.Errorf("rabbitmq channel consume qos bind fail: %v", err)
 		return nil, err
 	}
 	return channel.Consume(
@@ -290,7 +293,7 @@ func (c *client) getRoutingKey(queueName string) string {
 func (c *client) closeChannel(ch *amqp.Channel) {
 	if ch != nil && !ch.IsClosed() {
 		if err := ch.Close(); err != nil {
-			fmt.Println(err)
+			qlog.DefaultLogger.Errorf("rabbitmq close channel fail: %v", err)
 		}
 	}
 }
