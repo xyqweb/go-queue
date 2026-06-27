@@ -84,7 +84,7 @@ type RabbitmqConf struct {
 func (c *client) Connect(must bool) error {
 	if must {
 		for {
-			if err := c.openConnection(); err != nil {
+			if err := c.openConnection(must); err != nil {
 				qlog.DefaultLogger.Errorf("open rabbitmq connection fail: %v", err)
 				time.Sleep(reconnectDelay)
 			} else {
@@ -93,10 +93,10 @@ func (c *client) Connect(must bool) error {
 		}
 		return nil
 	}
-	return c.openConnection()
+	return c.openConnection(false)
 }
 
-func (c *client) openConnection() error {
+func (c *client) openConnection(must bool) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 	conn, err := amqp.Dial(instance.GetAmqpURI())
@@ -105,8 +105,10 @@ func (c *client) openConnection() error {
 		return err
 	}
 	c.conn = conn
-	c.notifyConnClose = make(chan *amqp.Error, 1)
-	c.conn.NotifyClose(c.notifyConnClose)
+	if must {
+		c.notifyConnClose = make(chan *amqp.Error, 1)
+		c.conn.NotifyClose(c.notifyConnClose)
+	}
 	c.isReady.Store(true)
 	return nil
 }
@@ -156,7 +158,7 @@ func (c *client) CloseChannel(ch *amqp.Channel) {
 // Push publish message to rabbitmq
 func (c *client) Push(queueName string, data *qtypes.MessageData) error {
 	if !c.isReady.Load() || c.conn.IsClosed() {
-		if err := c.openConnection(); err != nil {
+		if err := c.openConnection(false); err != nil {
 			return err
 		}
 	}
