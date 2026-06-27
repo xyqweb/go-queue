@@ -24,16 +24,16 @@ const (
 	DeadLetterRoutingKey = "x-dead-letter-routing-key"
 )
 
-func NewClient(must ...bool) Client {
+func NewClient(isPermanent ...bool) Client {
 	c := &client{
 		m:    new(sync.Mutex),
 		done: make(chan bool),
 	}
-	isMust := true
-	if len(must) > 0 {
-		isMust = must[0]
+	permanent := true
+	if len(isPermanent) > 0 {
+		permanent = isPermanent[0]
 	}
-	if err := c.Connect(isMust); err != nil && !isMust {
+	if err := c.Connect(permanent); err != nil && !permanent {
 		log.Fatal(err)
 	}
 	return c
@@ -46,7 +46,7 @@ func VerifyClient() error {
 }
 
 type Client interface {
-	Connect(must bool) error
+	Connect(isPermanent bool) error
 	CloseConnection()
 	HandleNotify()
 	OpenChannel() (*amqp.Channel, error)
@@ -81,10 +81,10 @@ type RabbitmqConf struct {
 }
 
 // Connect will create a new AMQP connection
-func (c *client) Connect(must bool) error {
-	if must {
+func (c *client) Connect(isPermanent bool) error {
+	if isPermanent {
 		for {
-			if err := c.openConnection(must); err != nil {
+			if err := c.openConnection(isPermanent); err != nil {
 				qlog.DefaultLogger.Errorf("open rabbitmq connection fail: %v", err)
 				time.Sleep(reconnectDelay)
 			} else {
@@ -96,7 +96,7 @@ func (c *client) Connect(must bool) error {
 	return c.openConnection(false)
 }
 
-func (c *client) openConnection(must bool) error {
+func (c *client) openConnection(isPermanent bool) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 	conn, err := amqp.Dial(instance.GetAmqpURI())
@@ -105,7 +105,7 @@ func (c *client) openConnection(must bool) error {
 		return err
 	}
 	c.conn = conn
-	if must {
+	if isPermanent {
 		c.notifyConnClose = make(chan *amqp.Error, 1)
 		c.conn.NotifyClose(c.notifyConnClose)
 	}
