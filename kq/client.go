@@ -33,8 +33,8 @@ type KafkaConf struct {
 	// sign method
 	Method string `json:",optional"`
 	// consume group id
-	GroupID  string `json:",optional"`
-	NonBlock bool   `json:",optional,default=true"`
+	GroupID string `json:",optional"`
+	//NonBlock bool   `json:",optional,default=true"`
 	// queue config
 	Queue []qtypes.QueueConf `json:",optional"`
 }

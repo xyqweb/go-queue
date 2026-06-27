@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 		Password: "",
 		Method:   "plain",
 		GroupID:  "kq-tet",
-		NonBlock: false,
+		//NonBlock: false,
 		Queue: []qtypes.QueueConf{
 			{Name: "test-queue"},
 		},
