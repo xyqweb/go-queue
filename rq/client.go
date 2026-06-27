@@ -261,7 +261,7 @@ func (c *client) bindQueue(channel *amqp.Channel, queueName string, routingKey s
 
 // Consume start consume queue
 func (c *client) Consume(channel *amqp.Channel, queueName string) (<-chan amqp.Delivery, error) {
-	if err := c.bindQueue(channel, queueName, c.getRoutingKey(queueName), nil); err != nil {
+	if err := c.bindQueue(channel, queueName, c.getRoutingKey(queueName), c.getArgs(queueName, "", 0)); err != nil {
 		qlog.DefaultLogger.Errorf("rabbitmq channel consume bind fail: %v", err)
 		return nil, err
 	}
