@@ -25,7 +25,7 @@ func NewConsume(queueName string, handler func(queueName string, data *qtypes.Me
 		log.Fatal("RabbitMQ has not been initialized yet")
 	}
 	c := &consume{
-		client:    NewClient(true),
+		client:    NewClient(),
 		done:      make(chan bool),
 		isReady:   make(chan bool, 1),
 		m:         &sync.Mutex{},
