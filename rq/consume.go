@@ -121,9 +121,14 @@ func (c *consume) handleJob(delivery amqp.Delivery) {
 		Attempt:   queueData.Attempt,
 	}
 	if err = c.handler(c.queueName, queue); err != nil {
-		qlog.DefaultLogger.Errorf("rabbitmq consume handler fail: %v", queue, err)
-		if err = c.client.Push(c.queueName, queue); err != nil {
-			qlog.DefaultLogger.Errorf("rabbitmq consume handler fail，re-push fail: %v", queue, err)
+		if err = c.client.Push(c.queueName, &qtypes.MessageData{
+			ID:        delivery.MessageId,
+			Body:      string(delivery.Body),
+			CreatedAt: delivery.Timestamp.UnixMilli(),
+			Delay:     60000,
+			Attempt:   queueData.Attempt + 1,
+		}); err != nil {
+			qlog.DefaultLogger.Errorf("rabbitmq consume queueName: %s body:%s handler fail，re-push fail: %v", c.queueName, string(delivery.Body), err)
 		}
 	}
 }
